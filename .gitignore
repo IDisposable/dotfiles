@@ -1,0 +1,3 @@
+# Session approvals land in settings.local.json, and must not mix with the
+# settings.json that seeds containers.
+.claude/settings.local.json

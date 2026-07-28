@@ -2,6 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(gh *)",
+      "Bash(gh issue *)",
+      "Bash(gh api *)",
       "Bash(git *)",
       "Bash(go *)",
       "Bash(gofmt *)",
@@ -55,11 +57,6 @@
       "Read(//usr/local/bin/**)",
       "Read(//workspaces/**)",
       "Read(//etc/**)",
-      "Read(//mnt/d/Dev/**)",
-      "Read(//d/Dev/**)",
-      "Read(//mnt/c/Users/idisp/.claude/**)",
-      "Read(//c/Users/idisp/.claude/**)",
-      "Read(//c/Users/idisp/AppData/Local/**)",
       "WebSearch",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:api.github.com)",
@@ -78,13 +75,7 @@
       "Bash(git push)",
       "Bash(git push *)"
     ],
-    "defaultMode": "acceptEdits",
-    "additionalDirectories": [
-      "/home/idisposable/.claude",
-      "/mnt/c/Users/idisp/.claude",
-      "C:\\Users\\idisp\\.claude",
-      "/mnt/d/Dev/IDisposable/dotfiles"
-    ]
+    "defaultMode": "acceptEdits"
   },
   "enabledPlugins": {
     "transcript-saver@transcript-saver": true,
