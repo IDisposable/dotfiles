@@ -1,0 +1,2 @@
+# Files are consumed inside Linux containers. CRLF makes the sh shebang fail.
+* text=auto eol=lf
