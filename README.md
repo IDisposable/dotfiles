@@ -66,8 +66,28 @@ the login.
 
 `sync.sh` strips `additionalDirectories` and every allow rule that holds a WSL mount or a
 Windows drive letter (`/mnt/c/...`, `//d/...`, `C:\...`), because they are dead config
-inside a Linux container. That step needs `jq`. Without it `sync.sh` leaves
-`settings.json` alone and says so.
+inside a Linux container. It also drops every entry in `extraKnownMarketplaces` whose
+source is a local `directory`, and each plugin in `enabledPlugins` that the entry serves,
+because the path is host native and the container cannot read it. That step needs `jq`.
+Without it `sync.sh` leaves `settings.json` alone and says so.
+
+## Bundled workflows in containers
+
+`/deep-research` is a bundled workflow, not a skill, so a `Skill(deep-research)` permission
+rule does nothing. The allow list holds `Workflow` for the tool itself.
+
+| Need | Where |
+| --- | --- |
+| `"disableWorkflows": false` | `.claude/settings.json` |
+| `"disableBundledSkills": false` | `.claude/settings.json`. That key removes bundled workflows too |
+| `WebSearch` in the allow list | `.claude/settings.json`. `/deep-research` needs the WebSearch tool |
+| Claude Code v2.1.154 or later, on a paid plan | The container image. On Pro, turn Dynamic workflows on in `/config` |
+
+`CLAUDE_CODE_DISABLE_WORKFLOWS` and `CLAUDE_CODE_DISABLE_BUNDLED_SKILLS` override the
+settings file, so keep both unset in the container environment.
+
+The first run in a new container asks for approval. In `auto` mode it asks once and records
+the answer in user settings. With `bypassPermissions` and with `claude -p` it never asks.
 
 ## Host setup (WSL)
 

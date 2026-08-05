@@ -23,17 +23,24 @@ if [ -d "$src/rules" ]; then
 fi
 
 # The repo copy seeds Linux containers, so drop what only resolves on this host:
-# additionalDirectories, and any allow rule holding a WSL mount or a Windows drive letter.
+# additionalDirectories, any allow rule holding a WSL mount or a Windows drive letter,
+# and any marketplace that reads a local directory, with the plugins it serves.
 if ! command -v jq >/dev/null 2>&1; then
 	echo "warn: jq not found. settings.json unchanged. Install jq, or edit it by hand." >&2
 	exit 0
 fi
 
-tmp="$dest/settings.json.tmp"
+# Outside the repo, so a failed jq leaves nothing behind.
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+
 jq '
 	del(.permissions.additionalDirectories)
 	| .permissions.allow |= map(select(test("/mnt/|//[a-zA-Z]/|[a-zA-Z]:\\\\") | not))
+	| [(.extraKnownMarketplaces // {}) | to_entries[] | select(.value.source.source == "directory") | .key] as $local
+	| .extraKnownMarketplaces |= with_entries(select(.value.source.source != "directory"))
+	| .enabledPlugins |= with_entries(select((.key | split("@") | last) as $m | ($local | index($m)) == null))
 ' "$src/settings.json" > "$tmp"
-mv "$tmp" "$dest/settings.json"
+cp "$tmp" "$dest/settings.json"
 
-echo "claude: synced settings.json from $src, host paths removed"
+echo "claude: synced settings.json from $src, host paths and local marketplaces removed"

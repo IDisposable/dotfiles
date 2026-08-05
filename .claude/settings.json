@@ -2,8 +2,6 @@
   "permissions": {
     "allow": [
       "Bash(gh *)",
-      "Bash(gh issue *)",
-      "Bash(gh api *)",
       "Bash(git *)",
       "Bash(go *)",
       "Bash(gofmt *)",
@@ -66,45 +64,50 @@
       "WebFetch(domain:marketplace.visualstudio.com)",
       "WebFetch(domain:json.schemastore.org)",
       "WebFetch(domain:www.schemastore.org)",
-      "Skill(deep-research)",
-      "Skill(deep-research:*)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:code.claude.com)",
       "Skill(update-config)",
-      "Skill(update-config:*)"
+      "Skill(update-config *)",
+      "Workflow"
     ],
-    "ask": [
+    "deny": [
       "Bash(git push)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(gh pr create)",
+      "Bash(gh pr create *)"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "auto"
   },
+  "disableBundledSkills": false,
+  "disableWorkflows": false,
   "enabledPlugins": {
-    "transcript-saver@transcript-saver": true,
-    "plugin-dev@claude-plugins-official": true,
-    "frontend-design@claude-plugins-official": true,
-    "feature-dev@claude-plugins-official": true,
     "claude-md-management@claude-plugins-official": true,
-    "remember@claude-plugins-official": true
+    "feature-dev@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "plugin-dev@claude-plugins-official": true,
+    "remember@claude-plugins-official": true,
+    "transcript-saver@transcript-saver": true
   },
   "extraKnownMarketplaces": {
-    "transcript-saver": {
-      "source": {
-        "source": "github",
-        "repo": "IDisposable/claude-transcript-plugin"
-      }
-    },
     "claude-plugins-official": {
       "source": {
         "source": "github",
         "repo": "anthropics/claude-plugins-official"
       }
+    },
+    "transcript-saver": {
+      "source": {
+        "source": "github",
+        "repo": "IDisposable/claude-transcript-plugin"
+      }
     }
   },
+  "outputStyle": "Proactive",
+  "spinnerTipsEnabled": false,
   "effortLevel": "high",
   "awaySummaryEnabled": false,
   "askUserQuestionTimeout": "60s",
   "tui": "fullscreen",
-  "verbose": false,
-  "outputStyle": "Proactive",
-  "spinnerTipsEnabled": false,
-  "prefersReducedMotion": true
+  "prefersReducedMotion": true,
+  "verbose": false
 }
