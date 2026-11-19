@@ -1,10 +1,18 @@
 #!/bin/sh
 # Refreshes the repo copy from the live config on the WSL host.
 # Host only. These paths do not exist inside a container.
+# Default is $USERPROFILE/.claude (from WSLENV=USERPROFILE/p).
 # Override the Windows path with WIN_CLAUDE=/mnt/c/Users/<name>/.claude
 set -eu
 
-src="${WIN_CLAUDE:-/mnt/c/Users/idisp/.claude}"
+if [ -n "${WIN_CLAUDE:-}" ]; then
+	src="$WIN_CLAUDE"
+elif [ -n "${USERPROFILE:-}" ]; then
+	src="$USERPROFILE/.claude"
+else
+	echo "error: set WSLENV=USERPROFILE/p in Windows, or set WIN_CLAUDE" >&2
+	exit 1
+fi
 dest="$(CDPATH= cd -- "$(dirname -- "$0")/.claude" && pwd)"
 
 if [ ! -d "$src" ]; then

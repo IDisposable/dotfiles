@@ -6,6 +6,54 @@ VS Code clones this repo into every dev container and runs `install.sh`. No chan
 `devcontainer.json` is necessary. This is the only mechanism that reaches containers in
 upstream repositories.
 
+## One time setup
+
+Do these steps one time per Windows machine.
+
+1. Send `USERPROFILE` from Windows into WSL. `host-claude-config`, `setup-wsl.sh` and
+   `sync.sh` need it. Look at the stored user value first:
+
+   ```bat
+   reg query HKCU\Environment /v WSLENV
+   ```
+
+   If there is no value, set it:
+
+   ```bat
+   setx WSLENV "USERPROFILE/p"
+   ```
+
+   If there is a value, put `:USERPROFILE/p` after the value that `reg query` shows, and set
+   the result with `setx`. Do not use `%WSLENV%`. Windows Terminal adds
+   `WT_SESSION:WT_PROFILE_ID:` to `WSLENV` in each session it starts, so `%WSLENV%` in a
+   Terminal window holds those values, and `setx` would store them as permanent values.
+
+2. Close every Windows Terminal and VS Code window, then stop WSL. This also stops the
+   running containers:
+
+   ```bat
+   wsl --shutdown
+   ```
+
+   A process gets the new value only when it starts after `setx`.
+
+3. In a new WSL shell, confirm the value:
+
+   ```sh
+   echo "$USERPROFILE"
+   ```
+
+   It must give `/mnt/c/Users/<name>`. If it is empty, look at step 1 again.
+
+4. In WSL, run `./setup-wsl.sh` from this repository. See [Host setup (WSL)](#host-setup-wsl).
+
+5. After the first push of `src/`, the `Publish features` workflow publishes
+   `ghcr.io/idisposable/dotfiles/host-claude-config`. A new package on ghcr is private. On
+   GitHub, open Packages, then `dotfiles/host-claude-config`, then Package settings, and set
+   the visibility to Public. Or run `docker login ghcr.io` in WSL.
+
+6. Add the settings in [Install](#install) to VS Code.
+
 ## Install
 
 Add to VS Code user `settings.json`:
@@ -13,7 +61,23 @@ Add to VS Code user `settings.json`:
 ```json
 "dotfiles.repository": "https://github.com/IDisposable/dotfiles",
 "dotfiles.targetPath": "~/dotfiles",
-"dotfiles.installCommand": "~/dotfiles/install.sh"
+"dotfiles.installCommand": "install.sh"
+```
+
+The install command is relative to the clone. The CLI quotes it, so a `~` does not expand
+and the step fails.
+
+VS Code runs the install one time per container. It writes `~/.devcontainer/.dotfilesMarker`
+before the install, and the marker stops each later run, also after a failure. To run it
+again in an existing container, delete the marker and reopen the container, or run
+`~/dotfiles/install.sh` by hand.
+
+Add the feature that mounts the Windows `.claude`. See [Host Claude config](#host-claude-config):
+
+```json
+"dev.containers.defaultFeatures": {
+  "ghcr.io/idisposable/dotfiles/host-claude-config:1": {}
+}
 ```
 
 ## Verify
@@ -28,7 +92,9 @@ run `/memory` to open it.
 | `.claude/CLAUDE.md` | Global preferences. Path independent | Loads in every project, every machine |
 | `.claude/rules/` | Preferences scoped by a `paths:` glob in frontmatter | Loads only when Claude reads a matching file |
 | `.claude/settings.json` | Permissions, plugins, effort level | Seeds a new container with approved defaults |
-| `install.sh` | Links `CLAUDE.md` and `rules/`, seeds `settings.json`, into `$HOME/.claude` | Container creation |
+| `install.sh` | Links `CLAUDE.md` and `rules/`, seeds `settings.json`, into a container local `$HOME/.claude`. Sends GitHub SSH remotes over HTTPS, and sets `gh` as the git credential helper | Container creation |
+| `src/host-claude-config/` | Dev container feature. Mounts `${localEnv:USERPROFILE}/.claude` at the same path | Makes the WSL links resolve in a container |
+| `.github/workflows/publish-features.yaml` | Publishes `src/` to `ghcr.io/idisposable/dotfiles` | A user level feature must be a published reference |
 | `sync.sh` | Copies the host config back into this repo | Run on the WSL host after a config change |
 | `setup-wsl.sh` | Links a WSL `~/.claude` at the Windows `.claude` | Run once per distribution |
 | `.gitattributes` | Forces LF | A CRLF shebang fails in every container |
@@ -59,7 +125,11 @@ rules in `~/.claude/rules/` load before project rules, so a project rule wins.
 | `settings.json` | Copy when absent | Claude writes it during a session. A symlink sends every runtime toggle back into this repo. An unconditional copy erases approvals |
 
 A fresh container has no `~/.claude/settings.json`, so the seed lands. An existing one is
-left alone.
+left alone. A link whose target is gone is removed and replaced.
+
+When `~/.claude` is a mount point, `install.sh` does not change it. The
+`sliekens/devcontainer-features/claude` feature bind mounts the WSL `~/.claude`, so a write
+there changes the WSL config, not a container copy.
 
 `.credentials.json` is a separate file and is never touched, so seeding does not disturb
 the login.
@@ -93,12 +163,12 @@ the answer in user settings. With `bypassPermissions` and with `claude -p` it ne
 
 The Windows `.claude` directory is the source of truth. A WSL distribution points at it
 with symbolic links, so one edit applies to both sides. Links work here because WSL and the
-Windows drive are in the same file system namespace. They do not work into a container. See
-[Limits](#limits).
+Windows drive are in the same file system namespace. In a container they work only with
+`host-claude-config`. See [Host Claude config](#host-claude-config).
 
 Link these five:
 
-| Path in `~/.claude` | Target under `/mnt/c/Users/idisp/.claude` |
+| Path in `~/.claude` | Target under `$USERPROFILE/.claude` |
 | --- | --- |
 | `CLAUDE.md` | `CLAUDE.md` |
 | `settings.json` | `settings.json` |
@@ -110,7 +180,8 @@ Link these five:
 ./setup-wsl.sh
 ```
 
-Set `WIN_CLAUDE` if the Windows user name is different:
+The scripts take `$USERPROFILE/.claude`. `USERPROFILE` comes from `WSLENV`. See
+[Host Claude config](#host-claude-config). To use a different path, set `WIN_CLAUDE`:
 
 ```sh
 WIN_CLAUDE=/mnt/c/Users/<name>/.claude ./setup-wsl.sh
@@ -170,37 +241,65 @@ repo work, which is why preferences are better off in CLAUDE.md.
 | --- | --- |
 | `.credentials.json` | A secret. Never put it in git. See [Authentication](#authentication) |
 | `plugins/`, `projects/`, `sessions/`, `history.jsonl` | Machine state. Same reasons as the table above |
-| `transcripts/` | Needs a bind mount. See [Mounts](#mounts) |
+| `transcripts/` | Reached through the WSL link and `host-claude-config`. See [Host Claude config](#host-claude-config) |
 
 The seed holds container valid paths only. `Read(//home/**)` and `Read(//workspaces/**)`
 cover the container home directory and the workspace.
 
-## Authentication
+## Host Claude config
+
+Docker runs in WSL, so each container builds there. That is also true when VS Code opens a
+Windows folder. The `sliekens/devcontainer-features/claude` feature bind mounts the WSL
+`~/.claude` and `~/.claude.json` into the container. WSL and every container therefore use
+one live config.
+
+The WSL `~/.claude` holds links to `$USERPROFILE/.claude`. A container does not
+mount `/mnt/c`, so without help these links do not resolve and `CLAUDE.md`, `settings.json`
+and `rules/` do not load.
 
 VS Code has no user level setting for mounts. See
 [vscode#265651](https://github.com/microsoft/vscode/issues/265651), closed as not planned,
 and [vscode-remote-release#10088](https://github.com/microsoft/vscode-remote-release/issues/10088),
-open. A mount is therefore possible only in a repository you control.
+open. A feature can declare mounts, and `dev.containers.defaultFeatures` adds a feature to
+every container. `host-claude-config` uses this to mount the Windows `.claude` at its WSL
+path, so the links resolve with no change to them.
 
-| Repository | Method |
+The mount source and target are `${localEnv:USERPROFILE}/.claude`. `localEnv` is the
+environment of the Docker host, which is WSL. WSL gets `USERPROFILE` from Windows only
+through `WSLENV`, and the `/p` flag converts it to a WSL path. See
+[One time setup](#one-time-setup).
+
+| Constraint | Effect |
 | --- | --- |
-| Yours | Bind mount `.credentials.json`. See [Mounts](#mounts) |
-| Upstream | Interactive login in each container |
+| `USERPROFILE` is not set in WSL | The source becomes `/.claude`, and the container does not start. Set `WSLENV`, or remove the feature from `defaultFeatures` on that machine |
+| The target must equal the target of the WSL links | `setup-wsl.sh` makes links to `$USERPROFILE/.claude`. If you set `WIN_CLAUDE` to a different path, the links do not resolve in a container |
+| The package on ghcr is private when first published | Make it public in the package settings, or run `docker login ghcr.io` in WSL |
+| A mount applies at container creation | Rebuild an existing container to get it |
+
+## Authentication
+
+| Install | Login |
+| --- | --- |
+| Windows | Its own `.credentials.json` |
+| WSL and every container | One shared `.credentials.json`, through the bind mount |
+
+A Claude session that runs in WSL and a container at the same time can see the token
+refreshed under it. If a login is lost, look for a second session first.
+
+`gh` keeps its token in `~/.config/gh` in the container file system. A rebuild removes it.
+Run `gh auth login` again after a rebuild. `install.sh` sets `gh` as the git credential
+helper when `gh` is logged in at install time.
+
+`install.sh` sends GitHub SSH remotes over HTTPS with `url.<base>.insteadOf`. A container
+has no SSH key, and VS Code forwards an agent only when the host has `SSH_AUTH_SOCK` set at
+container start.
 
 ## Mounts
 
-For repositories you control, add to `.devcontainer/devcontainer.json`.
-
-Windows host, VS Code started on Windows:
-
-```json
-"mounts": [
-  "source=${localEnv:USERPROFILE}/.claude/.credentials.json,target=/home/vscode/.claude/.credentials.json,type=bind",
-  "source=${localEnv:USERPROFILE}/.claude/transcripts,target=/home/vscode/.claude/transcripts,type=bind"
-]
-```
-
-WSL host, VS Code started through Remote WSL:
+The claude feature mounts all of `~/.claude`, so a container with it needs no other mount.
+For a repository you control that does not use the feature, add to
+`.devcontainer/devcontainer.json`. Docker runs in WSL, so `${localEnv:HOME}` is the WSL
+home, also when VS Code starts on Windows:
 
 ```json
 "mounts": [
@@ -216,7 +315,8 @@ images, but not all.
 
 A symbolic link does not cross a container boundary. A link is an inode that holds a target
 string, and the container resolves that string in its own file system. A link on the WSL
-host that points to `/mnt/c/...` is therefore broken inside a container.
+host that points to `/mnt/c/...` is broken inside a container, unless the container mounts
+that path. `host-claude-config` mounts it.
 
 The clone is per container, so the `CLAUDE.md` link that `install.sh` makes resolves inside
 that container only. Editing the clone in one container does not reach another.

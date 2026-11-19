@@ -1,10 +1,18 @@
 #!/bin/sh
 # Points a WSL ~/.claude at the Windows .claude with symbolic links.
 # Run once per WSL distribution. Safe to re-run.
+# Default is $USERPROFILE/.claude (from WSLENV=USERPROFILE/p).
 # Override the Windows path with WIN_CLAUDE=/mnt/c/Users/<name>/.claude
 set -eu
 
-win="${WIN_CLAUDE:-/mnt/c/Users/idisp/.claude}"
+if [ -n "${WIN_CLAUDE:-}" ]; then
+	win="$WIN_CLAUDE"
+elif [ -n "${USERPROFILE:-}" ]; then
+	win="$USERPROFILE/.claude"
+else
+	echo "error: set WSLENV=USERPROFILE/p in Windows, or set WIN_CLAUDE" >&2
+	exit 1
+fi
 dest="$HOME/.claude"
 stamp="$(date +%Y-%m-%d)"
 

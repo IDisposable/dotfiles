@@ -1,0 +1,14 @@
+{
+  "id": "host-claude-config",
+  "version": "1.0.0",
+  "name": "Host Claude config",
+  "description": "Mounts the Windows .claude directory at its WSL path, so the links in a WSL ~/.claude resolve in the container. Needs USERPROFILE in the WSL environment, through WSLENV=USERPROFILE/p.",
+  "documentationURL": "https://github.com/IDisposable/dotfiles",
+  "mounts": [
+    {
+      "source": "${localEnv:USERPROFILE}/.claude",
+      "target": "${localEnv:USERPROFILE}/.claude",
+      "type": "bind"
+    }
+  ]
+}
