@@ -1,0 +1,41 @@
+# Included from the global git config by install.sh.
+[user]
+	name = Marc Brooks
+	email = IDisposable@gmail.com
+	signingkey = C88B97D7C3F50CF10889BC4E571C316CE782FA9C
+[commit]
+	gpgsign = true
+[tag]
+	forcesignannotated = true
+[gpg]
+	format = openpgp
+[color]
+	ui = true
+[diff]
+	compactionheuristic = true
+	algorithm = histogram
+[core]
+	longpaths = true
+	autocrlf = false
+	safecrlf = false
+[merge]
+	conflictstyle = zdiff3
+[push]
+	autosetupremote = true
+	followtags = true
+[init]
+	defaultbranch = main
+[fetch]
+	prune = true
+[fetch "origin"]
+	prunetags = true
+[trailer "changeid"]
+	key = Change-Id
+[alias]
+	aa = add --all
+	ap = add --patch
+	ci = commit -v
+	co = checkout
+	pf = push --force-with-lease
+	st = status
+	branches = for-each-ref --sort=-committerdate --format=\"%(color:blue)%(authordate:relative) %(color:red)%(authorname)       %(color:white)%(color:bold)%(refname:short)\" refs/remotes

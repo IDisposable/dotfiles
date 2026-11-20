@@ -67,6 +67,25 @@ install_git() {
     return 0
   fi
 
+  # The Dev Containers extension does not copy the host ~/.gitconfig.
+  git_add_once include.path "$here/git/config"
+  echo "git: included $here/git/config"
+
+  # Absolute path: a relative one in git/config does not resolve against that file.
+  if [ -f "$here/git/ignore" ]; then
+    git config --global core.excludesFile "$here/git/ignore"
+    echo "git: global ignore is $here/git/ignore"
+  fi
+
+  # Set only with git-lfs present: filter.lfs.required fails checkouts without it.
+  # --skip-repo, so the run does not add LFS hooks to the repo in the current directory.
+  if git lfs version >/dev/null 2>&1; then
+    git lfs install --skip-repo >/dev/null
+    echo "git: git-lfs filters set"
+  else
+    echo "git: git-lfs not installed, LFS files check out as pointers"
+  fi
+
   # A container has no SSH key, and gets an agent only when the host runs one.
   # HTTPS uses the credential helper that VS Code forwards, or gh.
   git_add_once url.https://github.com/.insteadOf git@github.com:
